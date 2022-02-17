@@ -5,7 +5,7 @@
 # matrix xval and vector yval corresponding to the validation set; a vector
 # lambda.v of candidate values for lambda.
 # Output: For each element lambda in lambda.v, the value of MSPEval(lambda).
-# Additionally you can plot these values against log(1 + lambda) 􀀀 1, or against
+# Additionally you can plot these values against log(1 + lambda) ô 1, or against
 # df(lambda).
 
 prostate <- read.table("prostate_data.txt", header=TRUE, row.names = 1)
@@ -74,7 +74,7 @@ for(j in 1:p){
 text(0*(1:p), beta.path[1,],names(prostate)[1:p],pos=2)
 
 # EXPLICAR QUE VEIEM AL GRAFIC: ?L'ULTIMA VARIABLE DE MARXAR ASSIMPTOTICAMENT A 0 ES LCAVOL;
-# ?LCAVOL ES LA QUE COMENÇA D'UN VALOR MAJOR...
+# ?LCAVOL ES LA QUE COMENÃA D'UN VALOR MAJOR...
 
 
 
@@ -114,10 +114,52 @@ for (l in 1:n.lambdas){       # We iterate over each lambda:
   lambda <- lambda.v[l]
   PMSE.CV[l] <- 0
   for (i in 1:n.val){             # And for each lambda we iterate over the observations of the validation sample
-    X.i <- X[-i,]; Y.i <- Y[-i]   # Totes les dades excepte X[i] i Y[i] 
-    Xi <- X[i,]; Yi <- Y[i]   # Assignem les observacions de cada punt i a una variable X.i i la diferència entre Y[i] i l'estimador de y a la variable Y.i 
+    X.i <- X.val[-i,]; Y.i <- Y.val[-i]   # Totes les dades excepte X[i] i Y[i]    AQUÍ INTRODUIM LES DADES DE VALIDACIÓ
+    Xi <- X.val[i,]; Yi <- Y.val[i]   # Assignem les observacions de cada punt i a una variable X.i i la diferÃ¨ncia entre Y[i] i l'estimador de y a la variable Y.i 
     beta.i <- solve(t(X.i)%*%X.i + lambda*diag(1,p)) %*% t(X.i) %*% Y.i
     hat.Yi <- Xi %*% beta.i
+    PMSE.CV[l] <- PMSE.CV[l] + (hat.Yi-Yi)^2
+  }
+  PMSE.CV[l] <- PMSE.CV[l]/n
+}
+
+lambda.CV <- lambda.v[which.min(PMSE.CV)] # The best lambda value is the one for PMSE.CV is minimum
+df.CV <- df.v[which.min(PMSE.CV)]
+
+plot(log(1+lambda.v), PMSE.CV)
+abline(v=log(1+lambda.CV),col=2,lty=2)
+
+plot(df.v, PMSE.CV)
+abline(v=df.CV,col=2,lty=2)
+
+
+
+# 2. Write an R function implementing the ridge regression penalization para-
+# meter lambda choice based on k-fold cross-validation (MSPEk CV(lambda)).
+# Input, output and graphics as before (except that xval and yval are
+#                                       not required now as input).
+
+
+
+
+# choosing lambda by leave-one-out cross validation
+#############
+PMSEk.CV <- numeric(n.lambdas) # We create a vector of the length of quantity of lambdas.
+k <- 5                          # We define the number of k folds
+smp_size <- floor(n/k)
+
+# folds <- numeric(length(X))
+
+
+
+for (l in 1:n.lambdas){       # We iterate over each lambda:
+  lambda <- lambda.v[l]
+  PMSEk.CV[l] <- 0
+  for (i in 1:n){             
+    X.i <- X[-i,]; Y.i <- Y[-i]-m.Y.i   
+    Xi <- X[i,]; Yi <- Y[i]   
+    beta.i <- solve(t(X.i)%*%X.i + lambda*diag(1,p)) %*% t(X.i) %*% Y.i
+    hat.Yi <- Xi %*% beta.i + m.Y.i
     PMSE.CV[l] <- PMSE.CV[l] + (hat.Yi-Yi)^2
   }
   PMSE.CV[l] <- PMSE.CV[l]/n
@@ -134,3 +176,10 @@ abline(v=df.CV,col=2,lty=2)
 
 
 
+
+
+# Consider the prostate date used in class. Use your routines to choose the
+# penalization parameter lambda by the following criteria: behavior in the valida-
+#   tion set (the 30 observations not being in the training sample); 5-fold and
+# 10-fold cross-validation. Compare your results with those obtained when
+# using leave-one-out and generalized cross-validation.
