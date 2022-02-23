@@ -1,0 +1,65 @@
+# For the Boston House-price corrected dataset use Lasso estimation (in
+# glmnet) to fit the regression model where the response is CMEDV (the corrected version of MEDV) and the explanatory variables are the remaining
+# 13 variables in the previous list. Try to provide an interpretation to the
+# estimated model.
+
+load("Boston_.RData")
+Boston <- boston.c[7:20]
+Boston$CHAS <- as.numeric(Boston$CHAS)
+
+
+set.seed(123)
+spec = c(train = 0.70, validate = 0.30)
+g = sample(cut(
+  seq(nrow(Boston)), 
+  nrow(Boston)*cumsum(c(0,spec)),
+  labels = names(spec)
+))
+res = split(Boston, g)
+
+train.sample <- res$train
+validate.sample <- res$validate
+
+n.train <- dim(train.sample)[1]
+n.val <- dim(validate.sample)[1]
+
+X <- scale( as.matrix(train.sample[2:14]), center=TRUE, scale=TRUE)
+Y <- scale( train.sample[1], center=TRUE, scale=TRUE)
+
+X.val <- scale( as.matrix(validate.sample[1:14]), center=TRUE, scale=TRUE)
+Y.val <- scale( validate.sample[1], center=TRUE, scale=TRUE)
+
+n <- dim(X)[1]
+p <- dim(X)[2]
+
+require(glmnet)
+
+lasso.1 <- glmnet(X,Y, standardize=FALSE, intercept=FALSE)
+cv.lasso.1 <- cv.glmnet(X,Y, standardize=FALSE, intercept=FALSE,nfolds=n)
+
+op <- par(mfrow=c(2,1))
+plot(cv.lasso.1)
+plot(lasso.1,xvar="lambda")
+abline(v=log(cv.lasso.1$lambda.min),col=2,lty=2)
+abline(v=log(cv.lasso.1$lambda.1se),col=2,lty=2)
+print(coef(lasso.1,s=cv.lasso.1$lambda.min))
+print(coef(lasso.1,s=cv.lasso.1$lambda.1se))
+par(op)
+
+help("glmnet")
+
+
+
+
+
+#####
+# RIDGE REGRESSION USING GLMNET
+#####
+
+ridge <- glmnet(X,Y, alpha = 0, standardize=FALSE, intercept=FALSE)
+cv.ridge <- cv.glmnet(X, Y, alpha = 0, standardize=FALSE, intercept=FALSE,nfolds=n )
+plot(cv.ridge)
+plot(ridge,xvar="lambda")
+print(coef(ridge, s=cv.ridge$lambda.min))
+print(coef(ridge,s=cv.ridge$lambda.1se))
+par(op)
