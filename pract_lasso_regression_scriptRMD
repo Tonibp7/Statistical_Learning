@@ -1,0 +1,116 @@
+---
+title: "Lasso estimation in multiple lienar regression"
+author: "Heribert Roig, Antoni Bosch"
+date : "28 February of 2022"
+output:
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+
+**1. Lasso for the Boston Housing data.**
+
+First, we define the trining set and the validation set. Then we scale it.
+```{r}
+load("Boston_.RData")
+Boston <- boston.c[7:20]
+Boston$CHAS <- as.numeric(Boston$CHAS)
+
+
+set.seed(123)
+spec = c(train = 0.70, validate = 0.30)
+g = sample(cut(
+  seq(nrow(Boston)), 
+  nrow(Boston)*cumsum(c(0,spec)),
+  labels = names(spec)
+))
+res = split(Boston, g)
+
+train.sample <- res$train
+validate.sample <- res$validate
+
+n.train <- dim(train.sample)[1]
+n.val <- dim(validate.sample)[1]
+
+X <- scale( as.matrix(train.sample[2:14]), center=TRUE, scale=TRUE)
+Y <- scale( train.sample[1], center=TRUE, scale=TRUE)
+
+X.val <- scale( as.matrix(validate.sample[1:14]), center=TRUE, scale=TRUE)
+Y.val <- scale( validate.sample[1], center=TRUE, scale=TRUE)
+
+n <- dim(X)[1]
+p <- dim(X)[2]
+```
+
+1.1- For the Boston House-price corrected dataset use Lasso estimation (in
+glmnet) to fit the regression model where the response is CMEDV (the co-
+rrected version of MEDV) and the explanatory variables are the remaining
+13 variables in the previous list. Try to provide an interpretation to the
+estimated model.
+
+```{r}
+require(glmnet)
+
+lasso.1 <- glmnet(X,Y, standardize=FALSE, intercept=FALSE)
+cv.lasso.1 <- cv.glmnet(X,Y, standardize=FALSE, intercept=FALSE,nfolds=n)
+
+op <- par(mfrow=c(2,1))
+plot(cv.lasso.1)
+plot(lasso.1,xvar="lambda")
+abline(v=log(cv.lasso.1$lambda.min),col=2,lty=2)
+abline(v=log(cv.lasso.1$lambda.1se),col=2,lty=2)
+print(coef(lasso.1,s=cv.lasso.1$lambda.min))
+print(coef(lasso.1,s=cv.lasso.1$lambda.1se))
+par(op)
+
+```
+1.2- Use glmnet to fit the previous model using ridge regression. Compare the
+10-fold cross validation results from function cv.glmnet with those you
+obtained in the previous practice with your own functions.
+
+```{r}
+ridge <- glmnet(X,Y, alpha = 0, standardize=FALSE, intercept=FALSE)
+cv.ridge <- cv.glmnet(X, Y, alpha = 0, standardize=FALSE, intercept=FALSE,nfolds=n )
+plot(cv.ridge)
+plot(ridge,xvar="lambda")
+print(coef(ridge, s=cv.ridge$lambda.min))
+print(coef(ridge,s=cv.ridge$lambda.1se))
+par(op)
+```
+
+**2. A regression model with p>>n**
+
+```{r}
+express <- read.csv("journal.pbio.0020108.sd012.CSV",header=FALSE)
+surv <- read.csv("journal.pbio.0020108.sd013.CSV",header=FALSE)
+death <- (surv[,2]==1)
+log.surv <- log(surv[death,1]+.05)
+expr <- as.matrix(t(express[,death]))
+```
+
+2.1- Use glmnet and cv.glmnet to obtain the Lasso estimation for regressing
+log.surv against expr. How many coeficient different from zero are in
+the Lasso estimator? Illustrate the result with two graphics.
+
+```{r}
+
+lasso.surv <- glmnet(as.matrix(expr),log.surv, standardize=FALSE, intercept=FALSE)
+cv.lasso.surv <- cv.glmnet(expr,log.surv, standardize=FALSE, intercept=FALSE,nfolds=10)
+
+op <- par(mfrow=c(2,1))
+plot(cv.lasso.surv)
+plot(lasso.surv,xvar="lambda")
+abline(v=log(cv.lasso.surv$lambda.min),col=2,lty=2)
+abline(v=log(cv.lasso.surv$lambda.1se),col=2,lty=2)
+print(coef(lasso.surv,s=cv.lasso.surv$lambda.min))
+print(coef(lasso.surv,s=cv.lasso.surv$lambda.1se))
+par(op)
+```
+
+```{r}
+coefs = as.matrix(coef(lasso.surv))
+ix = which(abs(coefs[,1]) > 0)
+length(ix)
+```
