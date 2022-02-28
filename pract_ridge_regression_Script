@@ -1,21 +1,35 @@
-# 1- Write an R function implementing the ridge regression penalization para-
-# -meter choice based on the minimization of the mean squared prediction
-# error in a validation set (MSPEval(lambda)).
-# Input: Matrix x and vector y corresponding to the training sample;
-# matrix xval and vector yval corresponding to the validation set; a vector
-# lambda.v of candidate values for lambda.
-# Output: For each element lambda in lambda.v, the value of MSPEval(lambda).
-# Additionally you can plot these values against log(1 + lambda) ô 1, or against
-# df(lambda).
+---
+title: "Ridge Regression"
+author: "Heribert Roig, Antoni Bosch"
+date : "22 February of 2022"
+output:
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+
+**1. Choosing the penalization parameter $\lambda$.**
+
+1.1- Write an R function implementing the ridge regression penalization parameter choice based on the minimization of the mean squared prediction error in a validation set (MSPEval($\lambda$)).
+
+Input: Matrix x and vector y corresponding to the training sample; matrix xval and vector yval corresponding to the validation set; a vector lambda.v of candidate values for $\lambda$.
+
+Output: For each element $\lambda$ in lambda.v, the value of MSPEval($\lambda$).
+
+Additionally you can plot these values against log(1 + $\lambda$) -1, or against df($\lambda$).
 
 
-# Function definition:
+The function used for the MSP val is the followuing:
+```{r}
 Ridge_MSPEval <- function(X, Y, X.val, Y.val, lambda.v) {
   
   XtX <- t(X)%*%X 
   (d2 <- eigen(XtX,symmetric = TRUE, only.values = TRUE)$values)
   
-  # We calculate the condition from the eigenvalues and in case it has a large value, we'll notice the user.
+  # We calculate the condition from the eigenvalues and in case it has a large value, 
+  # we'll notice the user.
   cond.number <- max(d2)/min(d2)
   if (cond.number > 30) {
     print(paste0("The condition number has a large number: ", cond.number))
@@ -31,9 +45,12 @@ Ridge_MSPEval <- function(X, Y, X.val, Y.val, lambda.v) {
     H.lambda <- X %*% H.lambda.aux 
     diag.H.lambda[l,] <- diag(H.lambda)
   }
-  # For each lambda value we calculate a coefficient. Since we want to minimize the penalized-MSE, whenever we increase the value of lambda,
-  # i.e. the penalization, the value of the coefficients will lead to 0 in order to "compensate" the effect of great lambda values.
-  # In this chart we should verify that the lambda range is proper. In the negative case we wouldn't see how the coefficients go to 0 or the values which
+  # For each lambda value we calculate a coefficient. Since we want to minimize the 
+  # penalized-MSE, whenever we increase the value of lambda,
+  # i.e. the penalization, the value of the coefficients will lead to 0 in order to 
+  #"compensate" the effect of great lambda values.
+  # In this chart we should verify that the lambda range is proper. In the negative 
+  #case we wouldn't see how the coefficients go to 0 or the values which
   # they are different from 0 are located in the very left part of the chart
   plot(c(-1,log(1+lambda.v[n.lambdas])), range(beta.path),type="n",
        main = "Ridge coefficients vs log(1+lambda)" , xlab="log(1+lambda)",ylab="coefficients")
@@ -67,12 +84,14 @@ Ridge_MSPEval <- function(X, Y, X.val, Y.val, lambda.v) {
   # }
   # text(p+0*(1:p), beta.path[1,],names(prostate)[1:p],pos=4)
   
-  # We create a vector of the length of quantity of lambdas and we iterate over each lambda
+  # We create a vector of the length of quantity of lambdas and we iterate over 
+  #each lambda
   PMSE.CV <- numeric(n.lambdas) 
   for (l in 1:n.lambdas){       
     lambda <- lambda.v[l]
     PMSE.CV[l] <- 0
-    for (i in 1:n.val){             # And for each lambda we iterate over the observations of the validation sample
+    for (i in 1:n.val){             # And for each lambda we iterate over the 
+      #observations of the validation sample
       X.i <- X.val[-i,]; Y.i <- Y.val[-i]   # All the data except X[i] i Y[i]
       Xi <- X.val[i,]; Yi <- Y.val[i]   
       beta.i <- solve(t(X.i)%*%X.i + lambda*diag(1,p)) %*% t(X.i) %*% Y.i
@@ -97,15 +116,18 @@ Ridge_MSPEval <- function(X, Y, X.val, Y.val, lambda.v) {
   return(result)
 }
 
-############
-# Function testing:
+```
 
-# We first read the data Prostate
+Then we test de function developed. 
+First we read the data from Prostate:
+```{r}
 prostate <- read.table("prostate_data.txt", header=TRUE, row.names = 1)
 prostate <- prostate[, -10] # We delete the "Train" variable
 plot(prostate)
+```
 
-# We split our sample in training and validation:
+We split our sample in training and validation sets:
+```{r}
 set.seed(123)
 spec = c(train = .73, validate = .27)
 g = sample(cut(
@@ -114,12 +136,12 @@ g = sample(cut(
   labels = names(spec)
 ))
 res = split(prostate, g)
-
-# We assign each partition to a variable:
+```
+Then we assing each partition to a variable and then we create the explanatory and response variables. It's important to scale the training and validation sets to ensure the correct behavior of the sets used.
+```{r}
 train.sample <- res$train
 validate.sample <- res$validate
 
-# Now we create the explanatory and response variables.
 Y <- scale( train.sample$lpsa, center=TRUE, scale=FALSE) # Scaling and centering
 X <- scale( train.sample[,1:8], center=TRUE, scale=TRUE)
 n <- dim(X)[1] # There are 58 observations in the training sample.
@@ -130,24 +152,24 @@ n.val <- dim(X.val)[1] # There are 27 observations in the test sample.
 p.val <- dim(X.val)[2] # There are 8 parameterers
 
 lambda.max <- 1e5 # We assign a large value to the maximum value of lambda
-n.lambdas <- 25 # As in the example seen in class, we set 25 the number of possible lambdas.
-lambda.v <- exp(seq(0,log(lambda.max+1),length=n.lambdas))-1 # We create a set of possible lambda values
+n.lambdas <- 25 # As in the example seen in class, we set 25 the number of 
+#possible lambdas.
+lambda.v <- exp(seq(0,log(lambda.max+1),length=n.lambdas))-1 # We create a set 
+#of possible lambda values
 
-# Now, we test the function:
+```
+Finally, we test our function developed above:
+
+```{r}
 Ridge_MSPEval(X, Y, X.val, Y.val, lambda.v)
+```
 
+1.2- Write an R function implementing the ridge regression penalization parameter $\lambda$ choice based on k-fold cross-validation (MSPEk CV($\lambda$)).
 
-#############
-# 2. Write an R function implementing the ridge regression penalization para-
-# meter lambda choice based on k-fold cross-validation (MSPEk CV(lambda)).
-# Input, output and graphics as before (except that xval and yval are
-#                                       not required now as input).
-############
+Input, output and graphics as before (except that xval and yval are not required now as input).
 
-
-# choosing lambda by leave-one-out cross validation
-#############
-
+We define the function as can be seen: 
+```{r}
 set.seed(123)
 Ridge_K_fold <- function(X, Y, n.lambdas, k = 5) {
   
@@ -175,9 +197,12 @@ Ridge_K_fold <- function(X, Y, n.lambdas, k = 5) {
     H.lambda <- X %*% H.lambda.aux 
     diag.H.lambda[l,] <- diag(H.lambda)
   }
-  # For each lambda value we calculate a coefficient. Since we want to minimize the penalized-MSE, whenever we increase the value of lambda,
-  # i.e. the penalization, the value of the coefficients will lead to 0 in order to "compensate" the effect of great lambda values.
-  # In this chart we should verify that the lambda range is proper. In the negative case we wouldn't see how the coefficients go to 0 or the values which
+  # For each lambda value we calculate a coefficient. Since we want to minimize 
+  #the penalized-MSE, whenever we increase the value of lambda,
+  # i.e. the penalization, the value of the coefficients will lead to 0 in order 
+  #to "compensate" the effect of great lambda values.
+  # In this chart we should verify that the lambda range is proper. In the negative 
+  #case we wouldn't see how the coefficients go to 0 or the values which
   # they are different from 0 are located in the very left part of the chart
   plot(c(-1,log(1+lambda.v[n.lambdas])), range(beta.path),type="n",
        main = "Ridge coefficients vs log(1+lambda)" , xlab="log(1+lambda)",ylab="coefficients")
@@ -209,7 +234,8 @@ Ridge_K_fold <- function(X, Y, n.lambdas, k = 5) {
     }
     PMSEk.CV[l] <- PMSEk.CV[l]/length(testIndex)
   }
-  lambda.CV <- lambda.v[which.min(PMSEk.CV)] # The best lambda value is the one for PMSE.CV is minimum
+  lambda.CV <- lambda.v[which.min(PMSEk.CV)] # The best lambda value is the one 
+  #for PMSE.CV is minimum
   df.CV <- df.v[which.min(PMSEk.CV)]
   
   plot(log(1+lambda.v), PMSEk.CV)
@@ -223,30 +249,337 @@ Ridge_K_fold <- function(X, Y, n.lambdas, k = 5) {
   return(result)
   
 }
+```
 
+Due to we have defined the training and validation sets before, it's not necessary to do it again.
 
+We can test the 5-fold validation now:
+```{r}
 Ridge_K_fold(X, Y, 25, 5)
 
+```
+And for the 10-fold validation the results are:
+```{r}
+Ridge_K_fold(X, Y, 25, 10)
+
+```
+
+1.3- Consider the prostate date used in class. Use your routines to choose the penalization parameter lambda by the following criteria: behavior in the validation set (the 30 observations not being in the training sample); 5-fold and 10-fold cross-validation. Compare your results with those obtained when using leave-one-out and generalized cross-validation.
+
+The leave-one-out and generalized cross-validation are implemented in the R code provided by the professor, so we will use their code.
+
+```{r, include=FALSE}
+prostate <- read.table("prostate_data.txt", header=TRUE, row.names = 1)
+train.sample <- which(prostate$train==TRUE)
+
+#use.only <- 1:dim(prostate)[1]
+use.only <- train.sample
+
+Y <- scale( prostate$lpsa[use.only], center=TRUE, scale=FALSE)
+X <- scale( as.matrix(prostate[use.only,1:8]), center=TRUE, scale=TRUE)
+n <- dim(X)[1]
+p <- dim(X)[2]
+
+XtX <- t(X)%*%X 
+d2 <- eigen(XtX,symmetric = TRUE, only.values = TRUE)$values
+
+(cond.number <- max(d2)/min(d2))
+
+lambda.max <- 1e5
+n.lambdas <- 25
+lambda.v <- exp(seq(0,log(lambda.max+1),length=n.lambdas))-1
+#lambda.v <- seq(0,lambda.max,length=n.lambdas)
+
+#############
+# estimated coefficients path
+#############
+beta.path <- matrix(0,nrow=n.lambdas, ncol=p)
+diag.H.lambda <- matrix(0,nrow=n.lambdas, ncol=n)
+for (l in 1:n.lambdas){ 
+  lambda <- lambda.v[l]
+  H.lambda.aux <- t(solve(XtX + lambda*diag(1,p))) %*% t(X) 
+  beta.path[l,] <-  H.lambda.aux %*% Y
+  H.lambda <- X %*% H.lambda.aux 
+  diag.H.lambda[l,] <- diag(H.lambda)
+} 
+plot(c(-1,log(1+lambda.v[n.lambdas])), range(beta.path),type="n",
+     xlab="log(1+lambda)",ylab="coefficients")
+abline(h=0,lty=2)
+for(j in 1:p){
+  lines(log(1+lambda.v),beta.path[,j],col=4)
+  points(log(1+lambda.v),beta.path[,j],pch=19,cex=.7,col=4)
+}
+text(0*(1:p), beta.path[1,],names(prostate)[1:p],pos=2)
+
+#############
+# effective degrees of freedom
+#############
+df.v <- numeric(n.lambdas)
+for (l in 1:n.lambdas){
+  lambda <- lambda.v[l]
+  df.v[l] <- sum(d2/(d2+lambda)) 
+}
+plot(log(1+lambda.v),df.v)
+points(0*df.v,df.v,col=2,pch=19)
+text(0*df.v,df.v,round(df.v,2),col=2,pch=19,pos=4)
+
+# linear interpolation to obtain the values lambda.vv
+# such that the corresponding df are 0,1,...,8 (approx.)
+lambda.vv <- approx(x=df.v,y=lambda.v,xout=0:8)$y
+lambda.vv[1] <- lambda.v[n.lambdas]
+df.vv <- numeric(length(lambda.vv))
+for (l in 1:length(lambda.vv)){
+  lambda <- lambda.vv[l]
+  df.vv[l] <- sum(d2/(d2+lambda)) 
+}
+print(df.vv)
+
+# another way to compute df's
+trace.H.lambda <- apply(diag.H.lambda,1,sum)
+print(trace.H.lambda - df.v)
+
+# estimated coefficients path against effective degrees of freedom
+plot(c(0,p+1), range(beta.path),type="n",xlab="df(lambda)",ylab="coefficients")
+abline(h=0,lty=2)
+for(j in 1:p){
+  lines(df.v,beta.path[,j],col=4)
+  points(df.v,beta.path[,j],pch=19,cex=.7,col=4)
+}
+text(p+0*(1:p), beta.path[1,],names(prostate)[1:p],pos=4)
 
 
+#############
+# choosing lambda by leave-one-out cross validation
+#############
+PMSE.CV <- numeric(n.lambdas)
+for (l in 1:n.lambdas){
+  lambda <- lambda.v[l]
+  PMSE.CV[l] <- 0
+  for (i in 1:n){
+#   m.Y.i <- mean(Y[-i])
+    m.Y.i <- 0
+    X.i <- X[-i,]; Y.i <- Y[-i]-m.Y.i
+    Xi <- X[i,]; Yi <- Y[i]
+    beta.i <- solve(t(X.i)%*%X.i + lambda*diag(1,p)) %*% t(X.i) %*% Y.i
+    hat.Yi <- Xi %*% beta.i + m.Y.i
+    PMSE.CV[l] <- PMSE.CV[l] + (hat.Yi-Yi)^2
+  }
+  PMSE.CV[l] <- PMSE.CV[l]/n
+}
+lambda.CV <- lambda.v[which.min(PMSE.CV)]
+df.CV <- df.v[which.min(PMSE.CV)]
 
-# Consider the prostate date used in class. Use your routines to choose the
-# penalization parameter lambda by the following criteria: behavior in the valida-
-#   tion set (the 30 observations not being in the training sample); 5-fold and
-# 10-fold cross-validation. Compare your results with those obtained when
-# using leave-one-out and generalized cross-validation.
+plot(log(1+lambda.v), PMSE.CV)
+abline(v=log(1+lambda.CV),col=2,lty=2)
+
+plot(df.v, PMSE.CV)
+abline(v=df.CV,col=2,lty=2)
 
 
+#############
+#### computing PMSE.CV using the diagonal of H.lambda matrices 
+#############
+PMSE.CV.H.lambda <- numeric(n.lambdas)
+for (l in 1:n.lambdas){
+  lambda <- lambda.v[l]
+  hat.Y <- X %*% beta.path[l,]
+  PMSE.CV.H.lambda[l] <- sum( ((Y-hat.Y)/(1-diag.H.lambda[l,]))^2 )/n
+}
+lambda.CV.H.lambda <- lambda.v[which.min(PMSE.CV.H.lambda)]
+df.CV.H.lambda <- df.v[which.min(PMSE.CV.H.lambda)]
 
-
-
-
+plot(df.v, PMSE.CV.H.lambda)
+points(df.v, PMSE.CV,col=3,pch=19,cex=.5)
+abline(v=df.CV.H.lambda,col=2,lty=2)
 
 
 
 #############
-# Exercise 2
+#### computing PMSE.GCV in ridge regression
 #############
+PMSE.GCV <- numeric(n.lambdas)
+for (l in 1:n.lambdas){
+  lambda <- lambda.v[l]
+  hat.Y <- X %*% beta.path[l,]
+  nu <- sum(diag.H.lambda[l,])
+  PMSE.GCV[l] <- sum( ((Y-hat.Y)/(1-nu/n))^2 )/n
+}
+lambda.GCV <- lambda.v[which.min(PMSE.GCV)]
+df.GCV <- df.v[which.min(PMSE.GCV)]
+
+plot(df.v, PMSE.GCV)
+points(df.v, PMSE.CV,col=6,pch=19,cex=.75)
+abline(v=df.GCV,col=1,lty=2,lwd=3)
+abline(v=df.CV.H.lambda,col=6,lty=6)
+legend("top",c("PMSE.GCV","PMSE.CV","lambda.GCV","lambda.CV"),
+       pch=c(1,19,NA,NA),lty=c(0,0,2,6),lwd=c(0,0,3,1),col=c(1,6,1,6))
+```
+
+The final results for the lamda estimation are:
+```{r}
+PMSE.GCV <- numeric(n.lambdas)
+for (l in 1:n.lambdas){
+  lambda <- lambda.v[l]
+  hat.Y <- X %*% beta.path[l,]
+  nu <- sum(diag.H.lambda[l,])
+  PMSE.GCV[l] <- sum( ((Y-hat.Y)/(1-nu/n))^2 )/n
+}
+lambda.GCV <- lambda.v[which.min(PMSE.GCV)]
+df.GCV <- df.v[which.min(PMSE.GCV)]
+
+plot(df.v, PMSE.GCV)
+points(df.v, PMSE.CV,col=6,pch=19,cex=.75)
+abline(v=df.GCV,col=1,lty=2,lwd=3)
+abline(v=df.CV.H.lambda,col=6,lty=6)
+legend("top",c("PMSE.GCV","PMSE.CV","lambda.GCV","lambda.CV"),
+       pch=c(1,19,NA,NA),lty=c(0,0,2,6),lwd=c(0,0,3,1),col=c(1,6,1,6))
+```
+AS can be seen, the results obtained in the four cases (the obtained in the first, second and this last exercises) provide more or less the same results when trying to fit the lambda parameter.
+
+**2. Ridge Regresion for the Boston Housing data**
+
+The Boston House-price corrected dataset (available in boston.Rdata) contains the same data (with some corrections) and it also includes the UTM coordinates of the geographical centers of each neighborhood.
+For the Boston House-price corrected dataset use ridge regression to fit the regression model where the response is MEDV and the explanatory variables are the remaining 13 variables in the previous list. Try to provide an interpretation to the estimated model.
+
+For this exercise we will use the optimal value for $\lambda$ calculated by the 5-fold cross-validation function implemented in exercise 1.2.
+
+First we read the data from Boston Housing:
+```{r}
 library(MASS)
 Boston <- Boston
 pairs(Boston)
+
+
+```
+
+And then we apply the function for the k.fol corss-validation:
+```{r,include=FALSE}
+set.seed(123)
+spec = c(train = 0.70, validate = 0.30)
+g = sample(cut(
+  seq(nrow(Boston)), 
+  nrow(Boston)*cumsum(c(0,spec)),
+  labels = names(spec)
+))
+res = split(Boston, g)
+```
+
+```{r,include=FALSE}
+train.sample <- res$train
+validate.sample <- res$validate
+
+Y <- scale( train.sample$lstat, center=TRUE, scale=TRUE) # Scaling and centering
+X <- scale( train.sample[,1:13], center=TRUE, scale=TRUE)
+n <- dim(X)[1] # There are 58 observations in the training sample.
+p <- dim(X)[2] # There are 8 parameterers
+Y.val <- scale( validate.sample$lstat, center=TRUE, scale=FALSE)
+X.val <- scale( validate.sample[,1:13], center=TRUE, scale=TRUE)
+n.val <- dim(X.val)[1] # There are 27 observations in the test sample.
+p.val <- dim(X.val)[2] # There are 8 parameterers
+  
+lambda.max <- 1e5 # We assign a large value to the maximum value of lambda
+n.lambdas <- 25 # As in the example seen in class, we set 25 the number of possible lambdas.
+lambda.v <- exp(seq(0,log(lambda.max+1),length=n.lambdas))-1 # We create a set 
+#of possible lambda values
+```
+
+```{r,include=FALSE}
+set.seed(123)
+Ridge_K_fold <- function(X, Y, n.lambdas, k = 5) {
+  
+  n <- dim(X)[1]
+  PMSEk.CV <- numeric(n.lambdas) # We create a vector of the length of quantity of lambdas.
+  folds <- sample(cut(seq(1,n),breaks=k,labels=FALSE)) # We create a vector for each value of X
+  folds <- sample(cut(seq(1,n),breaks=k,labels=FALSE)) # We create a vector for each value of X
+  
+  XtX <- t(X)%*%X 
+  (d2 <- eigen(XtX,symmetric = TRUE, only.values = TRUE)$values)
+  
+  # We calculate the condition from the eigenvalues and in case it has a large value, 
+  # we'll notice the user.
+  cond.number <- max(d2)/min(d2)
+  if (cond.number > 30) {
+    print(paste0("The condition number has a large number: ", cond.number))
+  }
+  
+  # Now it's time to calculate the regression coefficients:
+  beta.path <- matrix(0,nrow=n.lambdas, ncol=p)
+  diag.H.lambda <- matrix(0,nrow=n.lambdas, ncol=n)
+  for (l in 1:n.lambdas){
+    lambda <- lambda.v[l]
+    H.lambda.aux <- t(solve(XtX + lambda*diag(1,p))) %*% t(X) 
+    beta.path[l,] <-  H.lambda.aux %*% Y
+    H.lambda <- X %*% H.lambda.aux 
+    diag.H.lambda[l,] <- diag(H.lambda)
+  }
+  # For each lambda value we calculate a coefficient. Since we want to minimize 
+  # the penalized-MSE, whenever we increase the value of lambda,
+  # i.e. the penalization, the value of the coefficients will lead to 0 in order 
+  # to "compensate" the effect of great lambda values.
+  # In this chart we should verify that the lambda range is proper. In the negative 
+  # case we wouldn't see how the coefficients go to 0 or the values which
+  # they are different from 0 are located in the very left part of the chart
+  plot(c(-1,log(1+lambda.v[n.lambdas])), range(beta.path),type="n",
+       main = "Ridge coefficients vs log(1+lambda)" , xlab="log(1+lambda)",ylab="coefficients")
+  abline(h=0,lty=2)
+  for(j in 1:p){
+    lines(log(1+lambda.v),beta.path[,j],col=4)
+    points(log(1+lambda.v),beta.path[,j],pch=19,cex=.7,col=4)
+  }
+  text(0*(1:p), beta.path[1,],names(Boston)[1:p],pos=2)
+
+  # effective degrees of freedom // effective coefficients of the regression
+  # We calulate the degrees of freedom for each value of lambda.
+  df.v <- numeric(n.lambdas)
+  for (l in 1:n.lambdas){
+    lambda <- lambda.v[l]
+    df.v[l] <- sum(d2/(d2+lambda))   
+  }
+  
+  for (l in 1:n.lambdas){       # We iterate over each lambda:
+    lambda <- lambda.v[l]
+    PMSEk.CV[l] <- 0
+    for (i in 1:k){
+      testIndex <- which(folds==i,arr.ind=TRUE)
+      X.i <- X[-testIndex,]; Y.i <- Y[-testIndex]
+      Xi <- X[testIndex, ]; Yi <- Y[testIndex]
+      beta.i <- solve(t(X.i)%*%X.i + lambda*diag(1,p)) %*% t(X.i) %*% Y.i
+      hat.Yi <- Xi %*% beta.i
+      PMSEk.CV[l] <- PMSEk.CV[l] + sum((hat.Yi-Yi)^2)
+    }
+    PMSEk.CV[l] <- PMSEk.CV[l]/length(testIndex)
+  }
+  lambda.CV <- lambda.v[which.min(PMSEk.CV)] # The best lambda value is the one for 
+  # PMSE.CV is minimum
+  df.CV <- df.v[which.min(PMSEk.CV)]
+  
+  plot(log(1+lambda.v), PMSEk.CV)
+  abline(v=log(1+lambda.CV),col=2,lty=2)
+  
+  plot(df.v, PMSEk.CV)
+  abline(v=df.CV,col=2,lty=2)
+  
+  print(paste0("The value of lambda that minimizes PMSE is: ", round(lambda.CV,2)))
+  result <- data.frame('PMSE k folds' = PMSEk.CV,  'lambda' = lambda.v, 'df' = df.v)
+  return(result)
+  
+}
+```
+
+```{r}
+Ridge_K_fold(X, Y, 25, 5)
+
+```
+The optimal value for the 5-fold cross-validation is 27.73, this mean that the optimal values for the regressive model using the Ridge regressión can be obtained using the Ridge Coefficients graph. IF we calculate the log(1+27.73)= 1.46. So, the values for the betas are the ones that can be observed in the graph.
+
+**Conclusion:**
+In the first part of this assignment, we have seen that, when we want to fit Ridge model, is important to split our data to fix the prediction values. For different kind of methods to predict the $\lambda$ value, we obtain a similar value for each of them. No on is better than others, just their are different and al of them are correct. 
+
+In the second part of the assignment we used the functions implemented in the first part applied to Boston Housing data. We decided to use the 5-fold cross-validation model to fit the $\lambda$ value, and then we estimate the beta values for the parameters using the graph obtained.If we use the graph, we can conclude that the most relevant variables that can be used to explain the MEDV are the RM, the AGE, black and the CRIM variables. On the other hand, the variables PTRATIO, TAX, RAD and NOX are the variables that incorporate less information to the model.
+
+In fact, one can find obvious that the number of rooms of a house can explain its price, as well as the age of the building. 
+
+What is a surprise is the variable black, which corresponds to the proportion of the black people in town. We consider it is a racist metric. Anyway, it significantly explained (or still explains) the housing prices.
+
+Otherwise, what does not astounds us is that the per capita crime rate affects the housing prices. In the same way, the fact that the NOX concentration did not affect it is absolutely logic since in the 1970s people were not as aware as nowadays of the air pollution.
+
